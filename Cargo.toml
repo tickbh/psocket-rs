@@ -1,0 +1,16 @@
+[package]
+name = "psocket"
+version = "0.1.0"
+authors = ["tickbh <tickdream125@hotmail.com>"]
+description = "the socket for Rust"
+license = "Apache-2.0/MIT"
+documentation = "https://docs.rs/psocket"
+repository = "https://github.com/tickbh/psocket-rs"
+readme = "README.md"
+keywords = ["socket", "TcpStream", "TcpSocket", "UdpSocket"]
+
+
+[dependencies]
+libc = "0.2"
+
+[dev-dependencies]
