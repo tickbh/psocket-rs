@@ -14,6 +14,7 @@ use net::{ToSocketAddrs, SocketAddr, Ipv4Addr, Ipv6Addr};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use std::time::Duration;
+use {SOCKET};
 
 /// A UDP socket.
 ///
@@ -704,6 +705,16 @@ impl UdpSocket {
     /// ```
     pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
+    }
+
+    /// return -1 is not a valid socket
+    /// return > 0 when the socket is ok
+    pub fn get_socket_fd(&self) -> i32 {
+        self.0.get_socket_fd()
+    }
+
+    pub fn as_raw_socket(&self) -> SOCKET {
+        self.0.as_raw_socket()
     }
 }
 

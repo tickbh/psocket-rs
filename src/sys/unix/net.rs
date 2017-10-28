@@ -26,6 +26,7 @@ pub extern crate libc as netc;
 pub type wrlen_t = size_t;
 
 pub const INVALID_SOCKET: c_int = -1;
+pub type SOCKET = c_int;
 
 fn max_len() -> usize {
     if cfg!(target_os = "macos") {
@@ -577,7 +578,7 @@ impl FromInner<c_int> for Socket {
 }
 
 impl IntoInner<c_int> for Socket {
-    fn into_inner(mut self) -> c_int {
+    fn into_inner(self) -> c_int {
         self.unlink()
     }
 }

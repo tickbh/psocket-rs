@@ -20,6 +20,7 @@ use sys::net::{cvt, cvt_r, cvt_gai, Socket, init, wrlen_t};
 use sys::net::netc as c;
 use sys_common::{AsInner, FromInner, IntoInner};
 use std::time::Duration;
+use {SOCKET};
 
 #[cfg(any(target_os = "dragonfly", target_os = "freebsd",
           target_os = "ios", target_os = "macos",
@@ -448,6 +449,10 @@ impl TcpSocket {
         let socket = Socket::new_v6()?;
         Ok(TcpSocket { inner: socket })
     }
+
+    pub fn as_raw_socket(&self) -> SOCKET {
+        self.inner.as_inner().clone()
+    }
 }
 
 impl Clone for TcpSocket {
@@ -660,6 +665,14 @@ impl UdpSocket {
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
+    }
+
+    pub fn get_socket_fd(&self) -> i32 {
+        self.inner.get_socket_fd()
+    }
+
+    pub fn as_raw_socket(&self) -> SOCKET {
+        self.inner.as_inner().clone()
     }
 }
 

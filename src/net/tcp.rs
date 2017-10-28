@@ -16,6 +16,7 @@ use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use std::time::Duration;
+use {SOCKET};
 
 /// A TCP stream between a local and a remote socket.
 ///
@@ -157,6 +158,10 @@ impl TcpSocket {
     /// return > 0 when the socket is ok
     pub fn get_socket_fd(&self) -> i32 {
         self.0.get_socket_fd()
+    }
+
+    pub fn as_raw_socket(&self) -> SOCKET {
+        self.0.as_raw_socket()
     }
 
     /// new by the socket fd, it will always set ready ok

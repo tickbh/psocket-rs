@@ -15,6 +15,7 @@ use std::time::Duration;
 pub mod c;
 pub mod net;
 
+pub use self::c::{SOCKET, INVALID_SOCKET};
 
 pub fn dur2timeout(dur: Duration) -> c::DWORD {
     // Note that a duration is a (u64, u32) (seconds, nanoseconds) pair, and the

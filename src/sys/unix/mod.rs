@@ -14,6 +14,8 @@ use std::io::{self, ErrorKind};
 use libc;
 pub mod net;
 
+pub use self::net::{SOCKET, INVALID_SOCKET};
+
 #[cfg(not(test))]
 pub fn init() {
     // By default, some platforms will send a *signal* when an EPIPE error
