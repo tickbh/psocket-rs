@@ -205,28 +205,58 @@ impl TcpSocket {
     pub fn connect(addr: &SocketAddr) -> io::Result<TcpSocket> {
         init();
 
-        let mut sock = Socket::new(addr, c::SOCK_STREAM)?;
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*sock.as_inner(), addrp, len) })?;
         sock.set_ready(true);
         Ok(TcpSocket { inner: sock })
     }
 
+    pub fn s_connect(&self, addr: &SocketAddr) -> io::Result<()> {
+        if self.is_ready() {
+            return Err(Error::new(ErrorKind::AlreadyExists, "the socket is already connect"))
+        }
+
+        let (addrp, len) = addr.into_inner();
+        cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) })?;
+        self.set_ready(true);
+        Ok(())
+    }
+
     pub fn connect_timeout(addr: &SocketAddr, timeout: Duration) -> io::Result<TcpSocket> {
         init();
 
-        let mut sock = Socket::new(addr, c::SOCK_STREAM)?;
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
         sock.connect_timeout(addr, timeout)?;
         sock.set_ready(true);
         Ok(TcpSocket { inner: sock })
     }
 
+    pub fn s_connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+        if self.is_ready() {
+            return Err(Error::new(ErrorKind::AlreadyExists, "the socket is already connect"))
+        }
+
+        self.inner.connect_timeout(addr, timeout)?;
+        self.inner.set_ready(true);
+        Ok(())
+    }
+
     pub fn connect_asyn(addr: &SocketAddr) -> io::Result<TcpSocket> {
         init();
 
-        let mut sock = Socket::new(addr, c::SOCK_STREAM)?;
+        let sock = Socket::new(addr, c::SOCK_STREAM)?;
         sock.connect_asyn(addr)?;
         Ok(TcpSocket { inner: sock })
+    }
+
+    pub fn s_connect_asyn(&self, addr: &SocketAddr) -> io::Result<()> {
+        if self.is_ready() {
+            return Err(Error::new(ErrorKind::AlreadyExists, "the socket is already connect"))
+        }
+
+        self.inner.connect_asyn(addr)?;
+        Ok(())
     }
 
     pub fn get_socket_fd(&self) -> i32 {
@@ -246,11 +276,11 @@ impl TcpSocket {
         self.inner.is_ready()
     }
 
-    pub fn set_ready(&mut self, ready: bool) {
+    pub fn set_ready(&self, ready: bool) {
         self.inner.set_ready(ready);
     }
 
-    pub fn check_ready(&mut self) -> io::Result<bool> {
+    pub fn check_ready(&self) -> io::Result<bool> {
         self.inner.check_ready()
     }
 
@@ -337,7 +367,7 @@ impl TcpSocket {
         self.inner.take_error()
     }
 
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
 
@@ -407,6 +437,16 @@ impl TcpSocket {
     pub fn unlink(self) -> io::Result<()> {
         self.inner.unlink();
         Ok(())
+    }
+
+    pub fn new_v4() -> io::Result<TcpSocket> {
+        let socket = Socket::new_v4()?;
+        Ok(TcpSocket { inner: socket })
+    }
+
+    pub fn new_v6() -> io::Result<TcpSocket> {
+        let socket = Socket::new_v6()?;
+        Ok(TcpSocket { inner: socket })
     }
 }
 
@@ -594,7 +634,7 @@ impl UdpSocket {
         self.inner.take_error()
     }
 
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(& self, nonblocking: bool) -> io::Result<()> {
         self.inner.set_nonblocking(nonblocking)
     }
 

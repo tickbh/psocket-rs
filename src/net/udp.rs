@@ -699,10 +699,10 @@ impl UdpSocket {
     /// ```no_run
     /// use psocket::UdpSocket;
     ///
-    /// let mut socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// socket.set_nonblocking(true).expect("set_nonblocking call failed");
     /// ```
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 }
@@ -1034,7 +1034,7 @@ mod tests {
     #[test]
     fn set_nonblocking() {
         each_ip(&mut |addr, _| {
-            let mut socket = t!(UdpSocket::bind(&addr));
+            let socket = t!(UdpSocket::bind(&addr));
 
             t!(socket.set_nonblocking(true));
             t!(socket.set_nonblocking(false));

@@ -112,6 +112,13 @@ impl TcpSocket {
         super::each_addr(addr, net_imp::TcpSocket::connect).map(TcpSocket)
     }
 
+    // provide socket use new_v4() or new_v6()
+    pub fn s_connect<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+        super::each_addr(addr, |addr| {
+            self.0.s_connect(addr)
+        })
+    }
+
     /// Opens a TCP connection to a remote host with a timeout.
     ///
     /// Unlike `connect`, `connect_timeout` takes a single [`SocketAddr`] since
@@ -129,11 +136,21 @@ impl TcpSocket {
         net_imp::TcpSocket::connect_timeout(addr, timeout).map(TcpSocket)
     }
 
+    // provide socket use new_v4() or new_v6()
+    pub fn s_connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+        self.0.s_connect_timeout(addr, timeout)
+    }
+
     /// Opens a TCP connection to a remote host with asyn.
     /// It will return immediately but the stream status is not ok, 
     /// when you want to use it, must call check_ready to check ok
     pub fn connect_asyn(addr: &SocketAddr) -> io::Result<TcpSocket> {
         net_imp::TcpSocket::connect_asyn(addr).map(TcpSocket)
+    }
+
+    // provide socket use new_v4() or new_v6()
+    pub fn s_connect_asyn(&self, addr: &SocketAddr) -> io::Result<()> {
+        self.0.s_connect_asyn(addr)
     }
 
     /// return -1 is not a valid socket
@@ -159,12 +176,12 @@ impl TcpSocket {
     }
 
     /// set socket ready status manual.
-    pub fn set_ready(&mut self, ready: bool) {
+    pub fn set_ready(&self, ready: bool) {
         self.0.set_ready(ready);
     }
 
     /// check socket ready status, when you connect remote host by asyn.
-    pub fn check_ready(&mut self) -> io::Result<bool> {
+    pub fn check_ready(&self) -> io::Result<bool> {
         self.0.check_ready()
     }
 
@@ -488,11 +505,11 @@ impl TcpSocket {
     /// ```no_run
     /// use psocket::TcpSocket;
     ///
-    /// let mut stream = TcpSocket::connect("127.0.0.1:8080")
+    /// let stream = TcpSocket::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
     /// ```
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         self.0.set_nonblocking(nonblocking)
     }
 
@@ -502,7 +519,7 @@ impl TcpSocket {
     /// ```no_run
     /// use psocket::TcpSocket;
     ///
-    /// let mut stream = TcpSocket::connect("127.0.0.1:8080")
+    /// let stream = TcpSocket::connect("127.0.0.1:8080")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_nonblocking(true).expect("set_nonblocking call failed");
     /// assert!(stream.is_nonblocking());
@@ -692,6 +709,20 @@ impl TcpSocket {
     pub fn unlink(self) -> io::Result<()> {
         self.0.unlink()
     }
+
+
+    /// Constructs a new TcpBuilder with the `AF_INET` domain, the `SOCK_STREAM`
+    /// type, and with a protocol argument of 0.
+    pub fn new_v4() -> io::Result<TcpSocket> {
+        net_imp::TcpSocket::new_v4().map(TcpSocket)
+    }
+
+    /// Constructs a new TcpBuilder with the `AF_INET6` domain, the `SOCK_STREAM`
+    /// type, and with a protocol argument of 0.
+    pub fn new_v6() -> io::Result<TcpSocket> {
+        net_imp::TcpSocket::new_v6().map(TcpSocket)
+    }
+
 }
 
 impl Clone for TcpSocket {
@@ -739,6 +770,7 @@ impl<'a> Iterator for Incoming<'a> {
         Some(self.listener.accept().map(|p| p.0))
     }
 }
+
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests {
@@ -1447,7 +1479,7 @@ mod tests {
     #[test]
     fn set_nonblocking() {
         let addr = next_test_ip4();
-        let mut listener = t!(TcpSocket::bind(&addr));
+        let listener = t!(TcpSocket::bind(&addr));
 
         t!(listener.set_nonblocking(true));
         t!(listener.set_nonblocking(false));

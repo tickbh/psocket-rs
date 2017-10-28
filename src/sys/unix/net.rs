@@ -18,6 +18,7 @@ use sys_common::{AsInner, FromInner, IntoInner};
 use sys_common::net::{getsockopt, setsockopt, sockaddr_to_addr};
 use std::time::{Duration, Instant};
 use std::cmp;
+use std::cell::Cell;
 
 pub use sys::{cvt, cvt_r};
 pub extern crate libc as netc;
@@ -56,8 +57,8 @@ use libc::SO_NOSIGPIPE;
 
 pub struct Socket {
     socket: c_int,
-    ready: bool,
-    nonblocking: bool,
+    ready: Cell<bool>,
+    nonblocking: Cell<bool>,
 }
 
 pub fn init() {}
@@ -91,16 +92,16 @@ impl Socket {
     pub fn new_by_fd(fd: c_int) -> Socket {
         Socket {
             socket: fd,
-            ready: false,
-            nonblocking: false,
+            ready: Cell::new(false),
+            nonblocking: Cell::new(false),
         }
     }
 
     pub fn new_ready_fd(fd: c_int) -> Socket {
         Socket {
             socket: fd,
-            ready: true,
-            nonblocking: false,
+            ready: Cell::new(true),
+            nonblocking: Cell::new(false),
         }
     }
 
@@ -130,6 +131,14 @@ impl Socket {
         }
     }
 
+    pub fn new_v4() -> io::Result<Socket> {
+        Self::new_raw(libc::AF_INET, libc::SOCK_STREAM)
+    }
+
+    pub fn new_v6() -> io::Result<Socket> {
+        Self::new_raw(libc::AF_INET6, libc::SOCK_STREAM)
+    }
+
     pub fn new_pair(fam: c_int, ty: c_int) -> io::Result<(Socket, Socket)> {
         unsafe {
             let mut fds = [0, 0];
@@ -154,7 +163,7 @@ impl Socket {
         }
     }
 
-    pub fn connect_timeout(&mut self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
+    pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
             let (addrp, len) = addr.into_inner();
@@ -223,7 +232,7 @@ impl Socket {
         }
     }
 
-    pub fn connect_asyn(&mut self, addr: &SocketAddr) -> io::Result<()> {
+    pub fn connect_asyn(&self, addr: &SocketAddr) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let r = unsafe {
             let (addrp, len) = addr.into_inner();
@@ -253,8 +262,8 @@ impl Socket {
         };
         Socket {
             socket: socket,
-            ready: true,
-            nonblocking: false,
+            ready: Cell::new(true),
+            nonblocking: Cell::new(false),
         }
     }
 
@@ -263,24 +272,24 @@ impl Socket {
     }
 
     pub fn is_ready(&self) -> bool {
-        self.ready
+        self.ready.get()
     }
 
-    pub fn set_ready(&mut self, ready: bool) {
-        self.ready = ready;
+    pub fn set_ready(&self, ready: bool) {
+        self.ready.set(ready);
     }
 
     pub fn ensure_ready(&self) -> io::Result<()> {
-        if !self.ready {
+        if !self.ready.get() {
             return Err(io::Error::new(io::ErrorKind::NotConnected,
                                       "current socket is not ready"));
         }
         Ok(())
     }
 
-    pub fn check_ready(&mut self) -> io::Result<bool> {
-        if self.ready {
-            return Ok(self.ready);
+    pub fn check_ready(&self) -> io::Result<bool> {
+        if self.ready.get() {
+            return Ok(self.ready.get());
         }
 
         let mut pollfd = libc::pollfd {
@@ -309,11 +318,11 @@ impl Socket {
                     return Err(e);
                 }
 
-                self.ready = true;
+                self.ready.set(true);
             }
         }
 
-        Ok(self.ready)
+        Ok(self.ready.get())
     }
 
     pub fn set_liner(&self, enable: bool, time: u16) -> io::Result<()> {
@@ -505,15 +514,15 @@ impl Socket {
         Ok(raw != 0)
     }
 
-    pub fn set_nonblocking(&mut self, nonblocking: bool) -> io::Result<()> {
+    pub fn set_nonblocking(&self, nonblocking: bool) -> io::Result<()> {
         let mut nonblocking = nonblocking as libc::c_int;
         cvt(unsafe { libc::ioctl(*self.as_inner(), libc::FIONBIO, &mut nonblocking) })?;
-        self.nonblocking = nonblocking == 1;
+        self.nonblocking.set(nonblocking == 1);
         Ok(())
     }
 
     pub fn is_nonblocking(&self) -> bool {
-        self.nonblocking
+        self.nonblocking.get()
     }
 
 
@@ -553,8 +562,8 @@ impl Clone for Socket {
     fn clone(&self) -> Socket {
         Socket {
             socket: self.socket,
-            ready: self.ready,
-            nonblocking: self.nonblocking,
+            ready: self.ready.clone(),
+            nonblocking: self.nonblocking.clone(),
         }
     }
 }
