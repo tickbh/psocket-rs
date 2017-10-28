@@ -123,6 +123,7 @@ impl Socket {
     }
     
     pub fn new_v4() -> io::Result<Socket> {
+        init();
         let socket = unsafe {
             match c::WSASocketW(c::AF_INET, c::SOCK_STREAM, 0, ptr::null_mut(), 0,
                                 c::WSA_FLAG_OVERLAPPED) {
@@ -139,6 +140,7 @@ impl Socket {
     }
 
     pub fn new_v6() -> io::Result<Socket> {
+        init();
         let socket = unsafe {
             match c::WSASocketW(c::AF_INET6, c::SOCK_STREAM, 0, ptr::null_mut(), 0,
                                 c::WSA_FLAG_OVERLAPPED) {
