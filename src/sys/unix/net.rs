@@ -10,7 +10,7 @@
 
 use std::ffi::CStr;
 use std::io;
-use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK, accept4, ssize_t};
+use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK, ssize_t};
 use std::mem;
 use net::{SocketAddr, Shutdown};
 use std::str;
@@ -36,9 +36,9 @@ fn max_len() -> usize {
     }
 }
 
-extern {
-    fn gnu_get_libc_version() -> *const libc::c_char;
-}
+
+#[cfg(target_os = "linux")]
+use libc::accept4;
 
 // See below for the usage of SOCK_CLOEXEC, but this constant is only defined on
 // Linux currently (e.g. support doesn't exist on other platforms). In order to
@@ -370,16 +370,16 @@ impl Socket {
         // atomically set the CLOEXEC flag is to use the `accept4` syscall on
         // Linux. This was added in 2.6.28, however, and because we support
         // 2.6.18 we must detect this support dynamically.
-        if cfg!(target_os = "linux") {
-            let res = cvt_r(|| unsafe {
-                accept4(self.socket, storage, len, SOCK_CLOEXEC)
-            });
-            match res {
-                Ok(fd) => return Ok(Socket::new_ready_fd(fd)),
-                Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
-                Err(e) => return Err(e),
-            }
-        }
+        // if cfg!(target_os = "linux") {
+        //     let res = cvt_r(|| unsafe {
+        //         accept4(self.socket, storage, len, SOCK_CLOEXEC)
+        //     });
+        //     match res {
+        //         Ok(fd) => return Ok(Socket::new_ready_fd(fd)),
+        //         Err(ref e) if e.raw_os_error() == Some(libc::ENOSYS) => {}
+        //         Err(e) => return Err(e),
+        //     }
+        // }
 
         let fd = cvt_r(|| unsafe {
             libc::accept(self.socket, storage, len)
@@ -580,50 +580,5 @@ impl FromInner<c_int> for Socket {
 impl IntoInner<c_int> for Socket {
     fn into_inner(self) -> c_int {
         self.unlink()
-    }
-}
-
-// In versions of glibc prior to 2.26, there's a bug where the DNS resolver
-// will cache the contents of /etc/resolv.conf, so changes to that file on disk
-// can be ignored by a long-running program. That can break DNS lookups on e.g.
-// laptops where the network comes and goes. See
-// https://sourceware.org/bugzilla/show_bug.cgi?id=984. Note however that some
-// distros including Debian have patched glibc to fix this for a long time.
-//
-// A workaround for this bug is to call the res_init libc function, to clear
-// the cached configs. Unfortunately, while we believe glibc's implementation
-// of res_init is thread-safe, we know that other implementations are not
-// (https://github.com/rust-lang/rust/issues/43592). Code here in libstd could
-// try to synchronize its res_init calls with a Mutex, but that wouldn't
-// protect programs that call into libc in other ways. So instead of calling
-// res_init unconditionally, we call it only when we detect we're linking
-// against glibc version < 2.26. (That is, when we both know its needed and
-// believe it's thread-safe).
-pub fn res_init_if_glibc_before_2_26() -> io::Result<()> {
-    // If the version fails to parse, we treat it the same as "not glibc".
-    if let Some(Ok(version_str)) = glibc_version_cstr().map(CStr::to_str) {
-        if let Some(version) = parse_glibc_version(version_str) {
-            if version < (2, 26) {
-                let ret = unsafe { libc::res_init() };
-                if ret != 0 {
-                    return Err(io::Error::last_os_error());
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-fn glibc_version_cstr() -> Option<&'static CStr> {
-    unsafe { Some(CStr::from_ptr(gnu_get_libc_version())) }
-}
-
-// Returns Some((major, minor)) if the string is a valid "x.y" version,
-// ignoring any extra dot-separated parts. Otherwise return None.
-fn parse_glibc_version(version: &str) -> Option<(usize, usize)> {
-    let mut parsed_ints = version.split(".").map(str::parse::<usize>).fuse();
-    match (parsed_ints.next(), parsed_ints.next()) {
-        (Some(Ok(major)), Some(Ok(minor))) => Some((major, minor)),
-        _ => None
     }
 }
