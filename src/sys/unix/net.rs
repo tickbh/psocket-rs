@@ -60,6 +60,7 @@ pub struct Socket {
     socket: c_int,
     ready: Cell<bool>,
     nonblocking: Cell<bool>,
+    closed: Cell<bool>,
 }
 
 pub fn init() {}
@@ -95,6 +96,7 @@ impl Socket {
             socket: fd,
             ready: Cell::new(false),
             nonblocking: Cell::new(false),
+            closed: Cell::new(false),
         }
     }
 
@@ -103,6 +105,7 @@ impl Socket {
             socket: fd,
             ready: Cell::new(true),
             nonblocking: Cell::new(false),
+            closed: Cell::new(false),
         }
     }
 
@@ -251,20 +254,12 @@ impl Socket {
         }
     }
 
-    pub fn get_socket_fd(&self) -> i32 {
-        self.socket as i32
-    }
-
-    pub fn new_out_fd(fd: i32) -> Socket {
-        let socket = if fd == -1 {
-            INVALID_SOCKET
-        } else {
-            fd as c_int
-        };
+    pub fn new_out_fd(fd: SOCKET) -> Socket {
         Socket {
-            socket: socket,
+            socket: fd,
             ready: Cell::new(true),
             nonblocking: Cell::new(false),
+            closed: Cell::new(false),
         }
     }
 
@@ -543,6 +538,16 @@ impl Socket {
         }
     }
 
+    pub fn close(&self) {
+        let _ = unsafe { libc::close(self.socket) };
+        self.closed.set(true);
+    }
+
+    pub fn is_close(&self) -> bool {
+        self.closed.get()
+    }
+
+
     pub fn unlink(mut self) -> c_int {
         let sock = self.socket;
         self.socket = INVALID_SOCKET;
@@ -552,7 +557,7 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        if self.socket == INVALID_SOCKET {
+        if self.socket == INVALID_SOCKET || self.is_close() {
             return;
         }
         let _ = unsafe { libc::close(self.socket) };
@@ -565,6 +570,7 @@ impl Clone for Socket {
             socket: self.socket,
             ready: self.ready.clone(),
             nonblocking: self.nonblocking.clone(),
+            closed: self.closed.clone(),
         }
     }
 }

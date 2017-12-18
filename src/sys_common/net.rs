@@ -185,6 +185,8 @@ pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
 
 pub struct TcpSocket {
     inner: Socket,
+    local: Option<SocketAddr>,
+    remote: Option<SocketAddr>,
 }
 
 impl TcpSocket {
@@ -195,7 +197,11 @@ impl TcpSocket {
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*sock.as_inner(), addrp, len) })?;
         sock.set_ready(true);
-        Ok(TcpSocket { inner: sock })
+        Ok(TcpSocket { 
+            inner: sock,
+            remote: Some(addr.clone()),
+            local: None,
+        })
     }
 
     pub fn s_connect(&self, addr: &SocketAddr) -> io::Result<()> {
@@ -215,7 +221,11 @@ impl TcpSocket {
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
         sock.connect_timeout(addr, timeout)?;
         sock.set_ready(true);
-        Ok(TcpSocket { inner: sock })
+        Ok(TcpSocket { 
+            inner: sock,
+            remote: Some(addr.clone()),
+            local: None,
+        })
     }
 
     pub fn s_connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
@@ -233,7 +243,11 @@ impl TcpSocket {
 
         let sock = Socket::new(addr, c::SOCK_STREAM)?;
         sock.connect_asyn(addr)?;
-        Ok(TcpSocket { inner: sock })
+        Ok(TcpSocket { 
+            inner: sock,
+            remote: Some(addr.clone()),
+            local: None,
+        })
     }
 
     pub fn s_connect_asyn(&self, addr: &SocketAddr) -> io::Result<()> {
@@ -245,13 +259,13 @@ impl TcpSocket {
         Ok(())
     }
 
-    pub fn get_socket_fd(&self) -> i32 {
-        self.inner.get_socket_fd()
-    }
-
-    pub fn new_by_fd(fd: i32) -> io::Result<TcpSocket> {
+    pub fn new_by_fd(fd: SOCKET) -> io::Result<TcpSocket> {
         let sock = Socket::new_out_fd(fd);
-        Ok(TcpSocket { inner: sock })
+        Ok(TcpSocket { 
+            inner: sock,
+            remote: None,
+            local: None,
+        })
     }
 
     pub fn is_valid(&self) -> bool {
@@ -264,6 +278,14 @@ impl TcpSocket {
 
     pub fn set_ready(&self, ready: bool) {
         self.inner.set_ready(ready);
+    }
+
+    pub fn is_close(&self) -> bool {
+        self.inner.is_close()
+    }
+
+    pub fn close(&self) {
+        self.inner.close();
     }
 
     pub fn check_ready(&self) -> io::Result<bool> {
@@ -313,15 +335,29 @@ impl TcpSocket {
     }
 
     pub fn peer_addr(&self) -> io::Result<SocketAddr> {
+        if let Some(addr) = self.remote {
+            return Ok(addr.clone());
+        }
         sockname(|buf, len| unsafe {
             c::getpeername(*self.inner.as_inner(), buf, len)
         })
     }
 
+    pub fn set_peer_addr(&mut self, addr: SocketAddr) {
+        self.remote = Some(addr);
+    }
+
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
+        if let Some(addr) = self.local {
+            return Ok(addr.clone());
+        }
         sockname(|buf, len| unsafe {
             c::getsockname(*self.inner.as_inner(), buf, len)
         })
+    }
+
+    pub fn set_socket_addr(&mut self, addr: SocketAddr) {
+        self.local = Some(addr);
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -329,7 +365,11 @@ impl TcpSocket {
     }
 
     pub fn duplicate(&self) -> io::Result<TcpSocket> {
-        self.inner.duplicate().map(|s| TcpSocket { inner: s })
+        self.inner.duplicate().map(|s| TcpSocket {
+            inner: s,
+            remote: self.remote.clone(),
+            local: self.local.clone(),
+        })
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
@@ -408,7 +448,11 @@ impl TcpSocket {
 
         // Start listening
         cvt(unsafe { c::listen(*sock.as_inner(), 128) })?;
-        Ok(TcpSocket { inner: sock })
+        Ok(TcpSocket { 
+            inner: sock,
+            remote: None,
+            local: Some(addr.clone()), 
+        })
     }
 
     pub fn accept(&self) -> io::Result<(TcpSocket, SocketAddr)> {
@@ -417,7 +461,11 @@ impl TcpSocket {
         let sock = self.inner.accept(&mut storage as *mut _ as *mut _,
                                      &mut len)?;
         let addr = sockaddr_to_addr(&storage, len as usize)?;
-        Ok((TcpSocket { inner: sock, }, addr))
+        Ok((TcpSocket { 
+            inner: sock,
+            remote: Some(addr),
+            local: self.local.clone(),
+        }, addr))
     }
 
     pub fn unlink(self) -> io::Result<()> {
@@ -427,12 +475,20 @@ impl TcpSocket {
 
     pub fn new_v4() -> io::Result<TcpSocket> {
         let socket = Socket::new_v4()?;
-        Ok(TcpSocket { inner: socket })
+        Ok(TcpSocket { 
+            inner: socket,
+            remote: None,
+            local: None,
+        })
     }
 
     pub fn new_v6() -> io::Result<TcpSocket> {
         let socket = Socket::new_v6()?;
-        Ok(TcpSocket { inner: socket })
+        Ok(TcpSocket { 
+            inner: socket,
+            remote: None,
+            local: None,
+        })
     }
 
     pub fn as_raw_socket(&self) -> SOCKET {
@@ -442,13 +498,21 @@ impl TcpSocket {
 
 impl Clone for TcpSocket {
     fn clone(&self) -> TcpSocket {
-        TcpSocket { inner: self.inner.clone() }
+        TcpSocket { 
+            inner: self.inner.clone(),
+            remote: self.remote.clone(),
+            local: self.local.clone(), 
+        }
     }
 }
 
 impl FromInner<Socket> for TcpSocket {
     fn from_inner(socket: Socket) -> TcpSocket {
-        TcpSocket { inner: socket }
+        TcpSocket { 
+            inner: socket,
+            remote: None,
+            local: None, 
+        }
     }
 }
 
@@ -650,10 +714,6 @@ impl UdpSocket {
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
         let (addrp, len) = addr.into_inner();
         cvt_r(|| unsafe { c::connect(*self.inner.as_inner(), addrp, len) }).map(|_| ())
-    }
-
-    pub fn get_socket_fd(&self) -> i32 {
-        self.inner.get_socket_fd()
     }
 
     pub fn as_raw_socket(&self) -> SOCKET {

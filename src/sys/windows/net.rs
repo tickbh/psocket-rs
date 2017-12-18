@@ -35,6 +35,7 @@ pub mod netc {
 pub struct Socket {
     socket: c::SOCKET,
     ready: Cell<bool>,
+    closed: Cell<bool>,
     nonblocking: Cell<bool>,
 }
 
@@ -114,6 +115,7 @@ impl Socket {
                 n => Ok(Socket {
                     socket: n,
                     ready: Cell::new(false),
+                    closed: Cell::new(false),
                     nonblocking: Cell::new(false),
                 }),
             }
@@ -131,6 +133,7 @@ impl Socket {
                 n => Ok(Socket {
                     socket: n,
                     ready: Cell::new(false),
+                    closed: Cell::new(false),
                     nonblocking: Cell::new(false),
                 }),
             }
@@ -148,6 +151,7 @@ impl Socket {
                 n => Ok(Socket {
                     socket: n,
                     ready: Cell::new(false),
+                    closed: Cell::new(false),
                     nonblocking: Cell::new(false),
                 }),
             }
@@ -281,22 +285,11 @@ impl Socket {
         }
     }
 
-    pub fn get_socket_fd(&self) -> i32 {
-        if self.socket == c::INVALID_SOCKET {
-            return -1;
-        }
-        self.socket as i32
-    }
-
-    pub fn new_out_fd(fd: i32) -> Socket {
-        let socket = if fd == -1 {
-            c::INVALID_SOCKET
-        } else {
-            fd as c::SOCKET
-        };
+    pub fn new_out_fd(fd: c::SOCKET) -> Socket {
         Socket {
-            socket: socket,
+            socket: fd,
             ready: Cell::new(true),
+            closed: Cell::new(false),
             nonblocking: Cell::new(false),
         }
     }
@@ -309,6 +302,7 @@ impl Socket {
                 n => Ok(Socket {
                     socket: n,
                     ready: Cell::new(true),
+                    closed: Cell::new(false),
                     nonblocking: Cell::new(false),
                 }),
             }
@@ -332,6 +326,7 @@ impl Socket {
                 n => Ok(Socket {
                     socket: n,
                     ready: Cell::new(true),
+                    closed: Cell::new(false),
                     nonblocking: Cell::new(false),
                 }),
             }
@@ -511,6 +506,15 @@ impl Socket {
         }
     }
 
+    pub fn close(&self) {
+        let _ = unsafe { c::closesocket(self.socket) };
+        self.closed.set(true);
+    }
+
+    pub fn is_close(&self) -> bool {
+        self.closed.get()
+    }
+
     pub fn unlink(mut self) -> c::SOCKET {
         let sock = self.socket;
         self.socket = c::INVALID_SOCKET;
@@ -527,7 +531,7 @@ impl<'a> Read for &'a Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        if self.socket == c::INVALID_SOCKET {
+        if self.socket == c::INVALID_SOCKET || self.closed.get() {
             return;
         }
         let _ = unsafe { c::closesocket(self.socket) };
@@ -539,6 +543,7 @@ impl Clone for Socket {
         Socket {
             socket: self.socket,
             ready: self.ready.clone(),
+            closed: self.closed.clone(),
             nonblocking: self.nonblocking.clone(),
         }
     }
@@ -552,6 +557,7 @@ impl FromInner<c::SOCKET> for Socket {
     fn from_inner(sock: c::SOCKET) -> Socket { Socket {
         socket: sock,
         ready: Cell::new(true),
+        closed: Cell::new(false),
         nonblocking: Cell::new(false),
     }}
 }

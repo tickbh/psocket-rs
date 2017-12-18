@@ -16,7 +16,7 @@ use net::{ToSocketAddrs, SocketAddr, Shutdown};
 use sys_common::net as net_imp;
 use sys_common::{AsInner, FromInner, IntoInner};
 use std::time::Duration;
-use {SOCKET};
+use {SOCKET, INVALID_SOCKET};
 
 /// A TCP stream between a local and a remote socket.
 ///
@@ -154,20 +154,18 @@ impl TcpSocket {
         self.0.s_connect_asyn(addr)
     }
 
-    /// return -1 is not a valid socket
-    /// return > 0 when the socket is ok
-    pub fn get_socket_fd(&self) -> i32 {
-        self.0.get_socket_fd()
-    }
-
     pub fn as_raw_socket(&self) -> SOCKET {
         self.0.as_raw_socket()
     }
 
     /// new by the socket fd, it will always set ready ok
     /// it will not a valid socket, when fd set -1
-    pub fn new_by_fd(fd: i32) -> io::Result<TcpSocket> {
+    pub fn new_by_fd(fd: SOCKET) -> io::Result<TcpSocket> {
         net_imp::TcpSocket::new_by_fd(fd).map(TcpSocket)
+    }
+
+    pub fn new_invalid() -> io::Result<TcpSocket> {
+        net_imp::TcpSocket::new_by_fd(INVALID_SOCKET).map(TcpSocket)
     }
 
     /// check the socket is valid.
@@ -183,6 +181,14 @@ impl TcpSocket {
     /// set socket ready status manual.
     pub fn set_ready(&self, ready: bool) {
         self.0.set_ready(ready);
+    }
+
+    pub fn is_close(&self) -> bool {
+        self.0.is_close()
+    }
+
+    pub fn close(&self) {
+        self.0.close();
     }
 
     /// check socket ready status, when you connect remote host by asyn.
@@ -206,6 +212,10 @@ impl TcpSocket {
         self.0.peer_addr()
     }
 
+    pub fn set_peer_addr(&mut self, addr: SocketAddr) {
+        self.0.set_peer_addr(addr);
+    }
+
     /// Returns the socket address of the local half of this TCP connection.
     ///
     /// # Examples
@@ -220,6 +230,10 @@ impl TcpSocket {
     /// ```
     pub fn local_addr(&self) -> io::Result<SocketAddr> {
         self.0.socket_addr()
+    }
+
+    pub fn set_local_addr(&mut self, addr: SocketAddr) {
+        self.0.set_socket_addr(addr);
     }
 
     /// Shuts down the read, write, or both halves of this connection.

@@ -707,12 +707,6 @@ impl UdpSocket {
         self.0.set_nonblocking(nonblocking)
     }
 
-    /// return -1 is not a valid socket
-    /// return > 0 when the socket is ok
-    pub fn get_socket_fd(&self) -> i32 {
-        self.0.get_socket_fd()
-    }
-
     pub fn as_raw_socket(&self) -> SOCKET {
         self.0.as_raw_socket()
     }

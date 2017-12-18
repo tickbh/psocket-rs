@@ -54,7 +54,7 @@ provide more fuction about socket
 // The func connect remote host asyn
 pub fn connect_asyn(addr: &SocketAddr) -> io::Result<TcpSocket>;
 // Get the socket fd
-pub fn get_socket_fd(&self) -> i32;
+pub fn as_raw_socket(&self) -> SOCKET;
 // Moves this TCP stream into or out of liner mode.
 pub fn set_liner(&self, enable: bool, time: u16) -> io::Result<()>;
 // The Method is set stream recv size kernel cache size.
