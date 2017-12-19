@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::os::windows::io::FromRawSocket;
+use std::os::windows::io::AsRawSocket;
+use std::net::{TcpStream, TcpListener};
 use std::cmp;
 use std::io::{self, Read};
 use libc::{c_int, c_void, c_ulong, c_long, c_ushort};
@@ -521,6 +524,31 @@ impl Socket {
         sock
     }
 
+    pub fn convert_to_stream(self) -> TcpStream {
+        let socket = self.unlink();
+        unsafe {
+            TcpStream::from_raw_socket(socket)
+        }
+    }
+
+    pub fn convert_to_listener(self) -> TcpListener {
+        let socket = self.unlink();
+        unsafe { 
+            TcpListener::from_raw_socket(socket)
+        }
+    }
+
+    pub fn from_stream(tcp: TcpStream) -> Socket {
+        let socket = tcp.as_raw_socket();
+        ::std::mem::forget(tcp);
+        Self::new_out_fd(socket)
+    }
+
+    pub fn from_listener(listen: TcpListener) -> Socket {
+        let socket = listen.as_raw_socket();
+        ::std::mem::forget(listen);
+        Self::new_out_fd(socket)
+    }
 }
 
 impl<'a> Read for &'a Socket {

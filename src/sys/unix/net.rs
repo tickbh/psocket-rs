@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::os::unix::io::FromRawFd;
+use std::os::unix::io::AsRawFd;
+use std::net::{TcpStream, TcpListener};
 use std::ffi::CStr;
 use std::io;
 use libc::{self, c_int, c_void, size_t, sockaddr, socklen_t, EAI_SYSTEM, MSG_PEEK, ssize_t};
@@ -547,12 +550,37 @@ impl Socket {
         self.closed.get()
     }
 
-
     pub fn unlink(mut self) -> c_int {
         let sock = self.socket;
         self.socket = INVALID_SOCKET;
         sock
-    } 
+    }
+
+    pub fn convert_to_stream(self) -> TcpStream {
+        let socket = self.unlink();
+        unsafe {
+            TcpStream::from_raw_fd(socket)
+        }
+    }
+
+    pub fn convert_to_listener(self) -> TcpListener {
+        let socket = self.unlink();
+        unsafe {
+            TcpListener::from_raw_fd(socket)
+        }
+    }
+
+    pub fn from_stream(tcp: TcpStream) -> Socket {
+        let socket = tcp.as_raw_fd();
+        ::std::mem::forget(tcp);
+        Self::new_out_fd(socket)
+    }
+
+    pub fn from_listener(listen: TcpListener) -> Socket {
+        let socket = listen.as_raw_fd();
+        ::std::mem::forget(listen);
+        Self::new_out_fd(socket)
+    }
 }
 
 impl Drop for Socket {

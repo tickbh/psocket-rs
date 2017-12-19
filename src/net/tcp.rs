@@ -10,6 +10,7 @@
 
 use std::io::prelude::*;
 
+use std::net::{TcpStream, TcpListener};
 use std::fmt;
 use std::io::{self};
 use net::{ToSocketAddrs, SocketAddr, Shutdown};
@@ -742,6 +743,21 @@ impl TcpSocket {
         net_imp::TcpSocket::new_v6().map(TcpSocket)
     }
 
+    pub fn convert_to_stream(self) -> TcpStream {
+        self.0.convert_to_stream()
+    }
+
+    pub fn convert_to_listener(self) -> TcpListener {
+        self.0.convert_to_listener()
+    }
+
+    pub fn from_stream(tcp: TcpStream) -> TcpSocket {
+        TcpSocket(net_imp::TcpSocket::from_stream(tcp))
+    }
+
+    pub fn from_listener(listen: TcpListener) -> TcpSocket {
+        TcpSocket(net_imp::TcpSocket::from_listener(listen))
+    }
 }
 
 impl Clone for TcpSocket {

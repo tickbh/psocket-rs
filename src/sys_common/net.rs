@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::net::{TcpStream, TcpListener};
 use std::cmp;
 use std::ffi::CString;
 use std::fmt;
@@ -471,6 +472,32 @@ impl TcpSocket {
     pub fn unlink(self) -> io::Result<()> {
         self.inner.unlink();
         Ok(())
+    }
+
+    pub fn convert_to_stream(self) -> TcpStream {
+        self.inner.convert_to_stream()
+    }
+
+    pub fn convert_to_listener(self) -> TcpListener {
+        self.inner.convert_to_listener()
+    }
+
+    pub fn from_stream(tcp: TcpStream) -> TcpSocket {
+        let socket = Socket::from_stream(tcp);
+        TcpSocket { 
+            inner: socket,
+            remote: None,
+            local: None,
+        }
+    }
+
+    pub fn from_listener(listen: TcpListener) -> TcpSocket {
+        let socket = Socket::from_listener(listen);
+        TcpSocket { 
+            inner: socket,
+            remote: None,
+            local: None,
+        }
     }
 
     pub fn new_v4() -> io::Result<TcpSocket> {
