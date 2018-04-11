@@ -11,7 +11,7 @@
 //! C definitions used by libnative that don't belong in liblibc
 
 #![allow(bad_style)]
-#![cfg_attr(test, allow(dead_code))]
+#![allow(dead_code)]
 
 use std::os::raw::{c_int, c_uint, c_ulong, c_long, c_ushort, c_char};
 #[cfg(target_arch = "x86_64")]

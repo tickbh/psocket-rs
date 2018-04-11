@@ -7,7 +7,6 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-
 use std::io::prelude::*;
 
 use std::net::{TcpStream, TcpListener};
@@ -624,6 +623,11 @@ impl TcpSocket {
         self.0.set_reuse_addr()
     }
 
+    /// The Method is set tcp stream SO_REUSEPORT.
+    pub fn set_reuse_port(&self) -> io::Result<()> {
+        self.0.set_reuse_port()
+    }
+
     /// Creates a new `TcpSocket` which will be bound to the specified
     /// address.
     ///
@@ -670,6 +674,25 @@ impl TcpSocket {
         super::each_addr(addr, net_imp::TcpSocket::bind).map(TcpSocket)
     }
 
+    /// Bind in exist socket, you can set the prop before you bind
+    pub fn bind_exist<A: ToSocketAddrs>(&self, addr: A) -> io::Result<()> {
+        
+        super::each_addr(addr, |&addr| {
+            self.0.bind_exist(&addr)
+        })
+
+        // let mut last_err = None;
+        // for addr in addr.to_socket_addrs()? {
+        //     match self.0.bind_exist(&addr) {
+        //         Ok(_) => return Ok(()),
+        //         Err(e) => last_err = Some(e),
+        //     }
+        // }
+        // Err(last_err.unwrap_or_else(|| {
+        //     Error::new(ErrorKind::InvalidInput,
+        //             "could not resolve to any addresses")
+        // }))
+    }
 
     /// Accept a new incoming connection from this listener.
     ///
@@ -1577,7 +1600,7 @@ mod tests {
     #[test]
     fn connect_timeout_unbound() {
         // bind and drop a socket to track down a "probably unassigned" port
-        let socket = TcpSocket::bind("127.0.0.1:0").unwrap();
+        let socket = TcpSocket::bind("127.0.0.1:2000").unwrap();
         let addr = socket.local_addr().unwrap();
         drop(socket);
 
@@ -1591,7 +1614,7 @@ mod tests {
 
     #[test]
     fn connect_timeout_valid() {
-        let listener = TcpSocket::bind("127.0.0.1:0").unwrap();
+        let listener = TcpSocket::bind("127.0.0.1:2001").unwrap();
         let addr = listener.local_addr().unwrap();
         TcpSocket::connect_timeout(&addr, Duration::from_secs(2)).unwrap();
     }

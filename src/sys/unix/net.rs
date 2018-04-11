@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(dead_code)]
+
 use std::os::unix::io::FromRawFd;
-use std::os::unix::io::AsRawFd;
+use std::os::unix::io::IntoRawFd;
 use std::net::{TcpStream, TcpListener};
 use std::ffi::CStr;
 use std::io;
@@ -362,6 +364,10 @@ impl Socket {
         setsockopt(self, libc::SOL_SOCKET, libc::SO_REUSEADDR, 1)
     }
 
+    pub fn set_reuse_port(&self) -> io::Result<()> {
+        setsockopt(self, libc::SOL_SOCKET, libc::SO_REUSEPORT, 1)
+    }
+
     pub fn accept(&self, storage: *mut sockaddr, len: *mut socklen_t)
                   -> io::Result<Socket> {
         // Unfortunately the only known way right now to accept a socket and
@@ -571,14 +577,12 @@ impl Socket {
     }
 
     pub fn from_stream(tcp: TcpStream) -> Socket {
-        let socket = tcp.as_raw_fd();
-        ::std::mem::forget(tcp);
+        let socket = tcp.into_raw_fd();
         Self::new_out_fd(socket)
     }
 
     pub fn from_listener(listen: TcpListener) -> Socket {
-        let socket = listen.as_raw_fd();
-        ::std::mem::forget(listen);
+        let socket = listen.into_raw_fd();
         Self::new_out_fd(socket)
     }
 }

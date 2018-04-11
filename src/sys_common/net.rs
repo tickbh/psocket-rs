@@ -293,9 +293,9 @@ impl TcpSocket {
         self.inner.check_ready()
     }
 
-    pub fn socket(&self) -> &Socket { &self.inner }
+    // pub fn socket(&self) -> &Socket { &self.inner }
 
-    pub fn into_socket(self) -> Socket { self.inner }
+    // pub fn into_socket(self) -> Socket { self.inner }
 
     pub fn set_read_timeout(&self, dur: Option<Duration>) -> io::Result<()> {
         self.inner.set_timeout(dur, c::SO_RCVTIMEO)
@@ -428,6 +428,27 @@ impl TcpSocket {
 
     pub fn set_reuse_addr(&self) -> io::Result<()> {
         self.inner.set_reuse_addr()
+    }
+
+    pub fn set_reuse_port(&self) -> io::Result<()> {
+        self.inner.set_reuse_port()
+    }
+
+    pub fn bind_exist(&self, addr: &SocketAddr) -> io::Result<()> {
+        init();
+
+        if !cfg!(windows) {
+            setsockopt(&self.inner, c::SOL_SOCKET, c::SO_REUSEADDR,
+                       1 as c_int)?;
+        }
+
+        // Bind our new socket
+        let (addrp, len) = addr.into_inner();
+        cvt(unsafe { c::bind(*self.inner.as_inner(), addrp, len as _) })?;
+
+        // Start listening
+        cvt(unsafe { c::listen(*self.inner.as_inner(), 128) })?;
+        Ok(())
     }
 
     pub fn bind(addr: &SocketAddr) -> io::Result<TcpSocket> {
@@ -581,9 +602,9 @@ impl UdpSocket {
         Ok(UdpSocket { inner: sock })
     }
 
-    pub fn socket(&self) -> &Socket { &self.inner }
+    // pub fn socket(&self) -> &Socket { &self.inner }
 
-    pub fn into_socket(self) -> Socket { self.inner }
+    // pub fn into_socket(self) -> Socket { self.inner }
 
     pub fn socket_addr(&self) -> io::Result<SocketAddr> {
         sockname(|buf, len| unsafe {

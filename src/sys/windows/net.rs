@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::os::windows::io::FromRawSocket;
-use std::os::windows::io::AsRawSocket;
+use std::os::windows::io::IntoRawSocket;
 use std::net::{TcpStream, TcpListener};
 use std::cmp;
 use std::io::{self, Read};
@@ -491,6 +491,10 @@ impl Socket {
         net::setsockopt(self, c::SOL_SOCKET, c::SO_REUSEADDR, 1)
     }
 
+    pub fn set_reuse_port(&self) -> io::Result<()> {
+        Ok(())
+    }
+
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
         net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BYTE)
     }
@@ -539,14 +543,12 @@ impl Socket {
     }
 
     pub fn from_stream(tcp: TcpStream) -> Socket {
-        let socket = tcp.as_raw_socket();
-        ::std::mem::forget(tcp);
+        let socket = tcp.into_raw_socket();
         Self::new_out_fd(socket)
     }
 
     pub fn from_listener(listen: TcpListener) -> Socket {
-        let socket = listen.as_raw_socket();
-        ::std::mem::forget(listen);
+        let socket = listen.into_raw_socket();
         Self::new_out_fd(socket)
     }
 }
