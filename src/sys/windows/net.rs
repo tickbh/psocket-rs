@@ -123,7 +123,6 @@ impl Socket {
                 }),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
     
@@ -141,7 +140,6 @@ impl Socket {
                 }),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -159,7 +157,6 @@ impl Socket {
                 }),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -310,7 +307,6 @@ impl Socket {
                 }),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -334,7 +330,6 @@ impl Socket {
                 }),
             }
         }?;
-        socket.set_no_inherit()?;
         Ok(socket)
     }
 
@@ -415,18 +410,6 @@ impl Socket {
             let secs = raw / 1000;
             let nsec = (raw % 1000) * 1000000;
             Ok(Some(Duration::new(secs as u64, nsec as u32)))
-        }
-    }
-
-    fn set_no_inherit(&self) -> io::Result<()> {
-        let success = unsafe {
-            c::SetHandleInformation(self.socket as c::HANDLE,
-                                    c::HANDLE_FLAG_INHERIT, 0)
-        };
-        if success == 0 {
-            Err(io::Error::last_os_error())
-        } else {
-            Ok(())
         }
     }
 
