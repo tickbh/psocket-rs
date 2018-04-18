@@ -1419,14 +1419,14 @@ mod tests {
         let socket_addr = next_test_ip4();
 
         let listener = t!(TcpSocket::bind(&socket_addr));
-        let listener_inner = listener.0.socket().as_inner();
+        let listener_inner = listener.as_raw_socket();
         let compare = format!("TcpSocket {{ addr: {:?}, {}: {:?}, ready: {:?} }}",
                               socket_addr, name, listener_inner, listener.is_ready());
         assert_eq!(format!("{:?}", listener), compare);
 
         let stream = t!(TcpSocket::connect(&("localhost",
                                                  socket_addr.port())));
-        let stream_inner = stream.0.socket().as_inner();
+        let stream_inner = stream.as_raw_socket();
         let compare = format!("TcpSocket {{ addr: {:?}, \
                               peer: {:?}, {}: {:?}, ready: {:?} }}",
                               stream.local_addr().unwrap(),
