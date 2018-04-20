@@ -901,7 +901,7 @@ mod tests {
         let socket_addr = next_test_ip4();
 
         let udpsock = t!(UdpSocket::bind(&socket_addr));
-        let udpsock_inner = udpsock.0.socket().as_inner();
+        let udpsock_inner = udpsock.as_raw_socket();
         let compare = format!("UdpSocket {{ addr: {:?}, {}: {:?} }}",
                               socket_addr, name, udpsock_inner);
         assert_eq!(format!("{:?}", udpsock), compare);
