@@ -8,8 +8,6 @@ rust:
 
 script:
 - cargo build
-- cargo test
-- cargo doc
 
 after_success:
 
